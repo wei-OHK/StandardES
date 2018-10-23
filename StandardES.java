@@ -1,4 +1,4 @@
-//--- by WEI@OHK 2016-6-16 ---//
+//--- by WEI@OHK 2018-10-13 ---//
 package SparkJob;
 
 import java.util.Random;
@@ -25,7 +25,7 @@ import com.sun.jna.Native;
 public class StandardES {
 
 	public final static int VERSION_MAJOR = 2;
-	public final static int VERSION_MINOR = 0;
+	public final static int VERSION_MINOR = 1;
 
 	public static void main(String[] args) throws Exception {
 		// Save job settings
@@ -34,6 +34,7 @@ public class StandardES {
 		//------------Log--------------------------------------------------------------//
 		SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		FSDataOutputStream os_argsLog = FileSystem.get(new Configuration()).create(new Path(settings.getOutputPath() + "/jobSettings.log"), true);
+		os_argsLog.write(("StandardESv" + VERSION_MAJOR + "." + VERSION_MINOR + " Application\n").getBytes("UTF-8"));
 		for(String value : args) {
 			os_argsLog.write((value+" ").getBytes("UTF-8"));
 		}
@@ -150,8 +151,8 @@ public class StandardES {
 
 		}
 
-		//End of Program
-	    	System.exit(0);
+		//End of Program, problem occurred in Spark 2.x.x
+	    	//System.exit(0);
 	}
 
 	/// ES operators
