@@ -1,4 +1,4 @@
-//--- by WEI@OHK 2018-10-13 ---//
+//--- by WEI@OHK 2018-10-25 ---//
 package SparkJob;
 
 import java.util.Random;
@@ -25,7 +25,7 @@ import com.sun.jna.Native;
 public class StandardES {
 
 	public final static int VERSION_MAJOR = 2;
-	public final static int VERSION_MINOR = 1;
+	public final static int VERSION_MINOR = 2;
 
 	public static void main(String[] args) throws Exception {
 		// Save job settings
@@ -43,7 +43,7 @@ public class StandardES {
 		//-----------------------------------------------------------------------------//
 
 		// ES initialization
-		Evaluator evaluator = new Evaluator(settings.getNativeLib(), settings.getFuncIndex());
+		Evaluator evaluator = new Evaluator(settings.getNativeLib(), settings.getFuncIndex(), settings.getAddInfoLength());
 
 		// Spark initialization
 		JavaSparkContext sc = new JavaSparkContext(new SparkConf());
@@ -78,17 +78,17 @@ public class StandardES {
 				//------------Log--------------------------------------------------------------//
 				double average_fitness = 0.0;
 				for(Population.Individual k : currentGen.individuals) {
-					average_fitness += k.fitness;
+					average_fitness += k.result.fitness;
 				}
 				average_fitness /= currentGen.individuals.size();
-				os_fitness.write((j+"\t"+currentGen.individuals.get(0).fitness+"\t"+average_fitness+"\n").getBytes("UTF-8"));
+				os_fitness.write((j+"\t"+currentGen.individuals.get(0).result.fitness+"\t"+average_fitness+"\n").getBytes("UTF-8"));
 				os_fitness.hflush();
 				
 				os_overview.write(("******* Generation_"+j+" finished at "+df.format(new Date())+" *******\n").getBytes("UTF-8"));
 				int indi_log_num = Math.min(settings.getLambda(), 5);
 				os_overview.write(("Top "+indi_log_num+": ").getBytes("UTF-8"));
 				for(int k = 0; k < indi_log_num; k++) 
-					os_overview.write((currentGen.individuals.get(k).fitness+"  ").getBytes("UTF-8"));
+					os_overview.write((currentGen.individuals.get(k).result.fitness+"  ").getBytes("UTF-8"));
 				os_overview.write(("\n").getBytes("UTF-8"));
 				os_overview.write(("Average: "+average_fitness+"\n").getBytes("UTF-8"));
 				os_overview.hflush();
@@ -96,7 +96,7 @@ public class StandardES {
 				FSDataOutputStream os_generation = FileSystem.get(new Configuration()).create(new Path(settings.getOutputPath() + "/Trial_" + i + "/generation_"+j+".log"), true);
 				for(int k = 0; k < currentGen.individuals.size(); k++) {
 					os_generation.write(("Individual_"+k+":\n").getBytes("UTF-8"));
-					os_generation.write(("Fitness: "+currentGen.individuals.get(k).fitness+"\n").getBytes("UTF-8"));
+					os_generation.write(("Fitness: "+currentGen.individuals.get(k).result.fitness+"\n").getBytes("UTF-8"));
 					os_generation.write(("Chromosome: ").getBytes("UTF-8"));
 					for(int l = 0; l < currentGen.individuals.get(k).chromosome.length; l++) {
 						if(l > 0)
@@ -110,16 +110,31 @@ public class StandardES {
 							os_generation.write((",").getBytes("UTF-8"));
 						os_generation.write((Double.toString(currentGen.individuals.get(k).strategy[l])).getBytes("UTF-8"));
 					}
-					os_generation.write(("\n\n").getBytes("UTF-8"));
+					os_generation.write(("\n").getBytes("UTF-8"));
+					os_generation.write(("LongValues: ").getBytes("UTF-8"));
+					for(int l = 0; l < currentGen.individuals.get(k).result.longValue.length; l++) {
+						if(l > 0)
+							os_generation.write((",").getBytes("UTF-8"));
+						os_generation.write((Long.toString(currentGen.individuals.get(k).result.longValue[l])).getBytes("UTF-8"));
+					}
+					os_generation.write(("\n").getBytes("UTF-8"));
+					os_generation.write(("DoubleValues: ").getBytes("UTF-8"));
+					for(int l = 0; l < currentGen.individuals.get(k).result.doubleValue.length; l++) {
+						if(l > 0)
+							os_generation.write((",").getBytes("UTF-8"));
+						os_generation.write((Double.toString(currentGen.individuals.get(k).result.doubleValue[l])).getBytes("UTF-8"));
+					}
+					os_generation.write(("\n").getBytes("UTF-8"));
+					os_generation.write(("\n").getBytes("UTF-8"));
 				}
 				os_generation.close();
 				
-				if(currentGen.individuals.get(0).fitness > bestFitness) {
-					bestFitness = currentGen.individuals.get(0).fitness;
+				if(currentGen.individuals.get(0).result.fitness > bestFitness) {
+					bestFitness = currentGen.individuals.get(0).result.fitness;
 
 					FSDataOutputStream os_best = FileSystem.get(new Configuration()).create(new Path(settings.getOutputPath() + "/Trial_" + i + "/bestIndividual.log"), true);
 					os_best.write(("In generation: "+j+"\n").getBytes("UTF-8"));
-					os_best.write(("Fitness: "+currentGen.individuals.get(0).fitness+"\n").getBytes("UTF-8"));
+					os_best.write(("Fitness: "+currentGen.individuals.get(0).result.fitness+"\n").getBytes("UTF-8"));
 					os_best.write(("Chromosome: ").getBytes("UTF-8"));
 					for(int l = 0; l < currentGen.individuals.get(0).chromosome.length; l++) {
 						if(l > 0)
@@ -132,6 +147,20 @@ public class StandardES {
 						if(l > 0)
 							os_best.write((",").getBytes("UTF-8"));
 						os_best.write((Double.toString(currentGen.individuals.get(0).strategy[l])).getBytes("UTF-8"));
+					}
+					os_best.write(("\n").getBytes("UTF-8"));
+					os_best.write(("LongValues: ").getBytes("UTF-8"));
+					for(int l = 0; l < currentGen.individuals.get(0).result.longValue.length; l++) {
+						if(l > 0)
+							os_best.write((",").getBytes("UTF-8"));
+						os_best.write((Long.toString(currentGen.individuals.get(0).result.longValue[l])).getBytes("UTF-8"));
+					}
+					os_best.write(("\n").getBytes("UTF-8"));
+					os_best.write(("DoubleValues: ").getBytes("UTF-8"));
+					for(int l = 0; l < currentGen.individuals.get(0).result.doubleValue.length; l++) {
+						if(l > 0)
+							os_best.write((",").getBytes("UTF-8"));
+						os_best.write((Double.toString(currentGen.individuals.get(0).result.doubleValue[l])).getBytes("UTF-8"));
 					}
 					os_best.write(("\n").getBytes("UTF-8"));
 					os_best.close();
@@ -157,6 +186,9 @@ public class StandardES {
 
 	/// ES operators
 	private static class ESOperator {
+        
+		private static final Random randgen = new Random(System.currentTimeMillis());
+        
 		// Initialize individuals randomly and reset fitness to 0
 		public static void Initialize(Population pop) {
 			for(Population.Individual i : pop.individuals) {
@@ -167,26 +199,25 @@ public class StandardES {
 						i.strategy[index] = pop.initialsv[j];
 					}
 				}
-				i.fitness = 0.0;
 			}
 		}
 
 		// Evaluate individuals' fitness
 		public static void Evaluate(Population pop, JavaSparkContext sc, Evaluator evaluator) {
 			JavaRDD<Population.Individual> input = sc.parallelize(pop.individuals);
-			JavaRDD<Double> output = input.map(evaluator);
-			List<Double> fitness = output.collect();
+			JavaRDD<EvaluationResult> output = input.map(evaluator);
+			List<EvaluationResult> result = output.collect();
 			for(int i = 0; i < pop.individuals.size(); i++)
-				pop.individuals.get(i).fitness = fitness.get(i);
+				pop.individuals.get(i).result = result.get(i);
 		}
 
 		// Sort the population and return the best mu individuals
 		public static List<Population.Individual> SelectParent(Population pop, int mu) {
 			Collections.sort(pop.individuals, new Comparator<Population.Individual>() {
 				public int compare(Population.Individual individual_1, Population.Individual individual_2) {
-					if(individual_1.fitness > individual_2.fitness) {
+					if(individual_1.result.fitness > individual_2.result.fitness) {
 						return -1;
-					} else if(individual_1.fitness < individual_2.fitness) {
+					} else if(individual_1.result.fitness < individual_2.result.fitness) {
 						return 1;
 					} else {
 						return 0;
@@ -233,8 +264,6 @@ public class StandardES {
 			}			
 	
 		}
-
-		private static final Random randgen = new Random(System.currentTimeMillis());
 	}
 
 	/// ES population
@@ -280,41 +309,46 @@ public class StandardES {
 			Individual(int dimension) {
 				chromosome = new double[dimension];
 				strategy = new double[dimension];
-				fitness = 0.0;
 			}
 
 			public double[] chromosome;
 			public double[] strategy;
-			public double fitness;
+			public EvaluationResult result;
 		} 
 	}
 
 
 	/// Evaluator Class 
-	private static class Evaluator implements Serializable, Function<Population.Individual, Double> {
+	private static class Evaluator implements Serializable, Function<Population.Individual, EvaluationResult> {
 		// Constructor with job settings
-		Evaluator(String libName, int funcIndex) {
-			this.libName = libName;
-			this.funcIndex = funcIndex;
+		Evaluator(String lib_name, int func_index, int add_info_length) {
+			this.libName = lib_name;
+			this.funcIndex = func_index;
+            
+			this.addInfoLength = add_info_length;
 		}
 
 		// Used for map transformation
-		public Double call(Population.Individual x) {
+		public EvaluationResult call(Population.Individual x) {
 			NativeLibLoader.setNativeLib(libName);
-			return NativeLibLoader.JOBNATIVELIB.INSTANCE.evaluateFcns(x.chromosome, funcIndex);
+			long[] long_buffer = new long[addInfoLength];
+			double[] double_buffer = new double[addInfoLength];
+			double fitness = NativeLibLoader.JOBNATIVELIB.INSTANCE.evaluateFcns(x.chromosome, funcIndex, long_buffer, double_buffer, addInfoLength);
+			EvaluationResult result = new EvaluationResult(fitness, long_buffer, double_buffer);
+			return result;
 		}
 
 		/// Native lib Loader
 		private static class NativeLibLoader {
 			// Set native library
-			public static void setNativeLib(String libName) {
-				NativeLibLoader.libName = libName;
+			public static void setNativeLib(String lib_name) {
+				NativeLibLoader.libName = lib_name;
 			}
 
 			// JNA interface
 			public interface JOBNATIVELIB extends Library {
 				JOBNATIVELIB INSTANCE = (JOBNATIVELIB)Native.loadLibrary(libName, JOBNATIVELIB.class);
-				double evaluateFcns(double individual[], int func_index);
+				double evaluateFcns(double individual[], int func_index, long long_buffer[], double double_buffer[], int add_info_length);
 			}
 
 			private static String libName;
@@ -322,9 +356,25 @@ public class StandardES {
 	
 		private final String libName;
 		private final int funcIndex;
+        
+		private final int addInfoLength;
 	}
 
-
+	/// Evaluation Result Class
+	private static class EvaluationResult implements Serializable {
+		// Constructor with results
+		EvaluationResult(double fitness, long[] long_buffer, double[] double_buffer) {
+			this.fitness = fitness;
+   			this.longValue = long_buffer;
+			this.doubleValue = double_buffer;
+		}
+        
+		// Results
+		public double fitness;
+		public long[] longValue;
+		public double[] doubleValue;
+	}
+    
 	/// Job Settings Class
 	private static class ESJobSettings {
 		// Default constructor
@@ -332,14 +382,13 @@ public class StandardES {
 			outputPath = "StandardESv" + VERSION_MAJOR + "." + VERSION_MINOR + "_output_" + System.currentTimeMillis();
 			nativeLib = "";
 			funcIndex = 0;
+            
 			trialsNum = 10;
-			
-			dimensions = new int[1];
 			maxGeneration = 500;
-			
 			lambda = 200;
-			mu = 32;
-			
+			mu = 30;
+	
+			dimensions = new int[1];
 			ucv	= new double[1];			
 			lcv	= new double[1];			
 			usv	= new double[1];
@@ -351,7 +400,8 @@ public class StandardES {
 			lcv[0] = -1.0;
 			usv[0] = 0.15;
 			lsv[0] = 0.00001;
-			initialsv[0] = 0.05;	
+			initialsv[0] = 0.05;
+			addInfoLength = 0;
 		}
 
 		// Constructor with args
@@ -363,19 +413,10 @@ public class StandardES {
 			try {		
 				for(int i = 0; i < args.length; i++) {
 					switch(args[i]) {
-						case "-G":
-							setMaxGeneration(Integer.parseInt(args[++i]));
-							break;
 						case "-OUTPUTPATH":
 							setOutputPath(args[++i]);
-							break;		
-						case "-LAMBDA":
-							setLambda(Integer.parseInt(args[++i]));
 							break;
-						case "-MU":
-							setMu(Integer.parseInt(args[++i]));
-							break;
-						case "-LIB":
+ 						case "-LIB":
 							setNativeLib(args[++i]);
 							break;
 						case "-FUNC_INDEX":
@@ -383,6 +424,15 @@ public class StandardES {
 							break;
 						case "-TRIALS":
 							setTrialsNum(Integer.parseInt(args[++i]));
+							break;
+						case "-G":
+							setMaxGeneration(Integer.parseInt(args[++i]));
+							break;
+						case "-LAMBDA":
+							setLambda(Integer.parseInt(args[++i]));
+							break;
+						case "-MU":
+							setMu(Integer.parseInt(args[++i]));
 							break;
 						case "-D_FORMAT":
 							int D_COUNT = Integer.parseInt(args[++i]);
@@ -406,6 +456,9 @@ public class StandardES {
 								initialsv[j] = Double.parseDouble(D_CONF[5]);
 							}
 							break;
+						case "-ADD_INFO_LENGTH":
+							setAddInfoLength(Integer.parseInt(args[++i]));
+							break;
 						default:
 							System.err.println("Undefined option: '" + args[i] + "'");
 							throw new Exception(); 
@@ -415,14 +468,16 @@ public class StandardES {
 				System.err.println("Unknown command");
 				System.err.println("Usage: spark-submit --num-executors NUM --files LIBNAME --name APPNAME StandardESv" + VERSION_MAJOR + "." + VERSION_MINOR + ".jar [<option>..]");
 				System.err.println("Options (* must be specified):");
-				System.err.println("-OUTPUTPATH <PATH> 			: Path for Outputs.");				
-				System.err.println("-TRIALS <NUM> 			: Number of trials");
-				System.err.println("-G <NUM> 				: Generation.");
-				System.err.println("-LAMBDA <NUM> 			: Number of offspring.");
-				System.err.println("-MU <NUM> 				: Number of parents.");
-				System.err.println("-D_FORMAT <@SEE SAMPLES> 		: Describe the individual.");
-				System.err.println("-LIB <NAME> (*) 			: Name of native library.");
-				System.err.println("-FUNC_INDEX <NUM> 			: Index of function in native library to be used.");
+				System.err.println("-OUTPUTPATH <PATH>          : Path for Outputs.");
+				System.err.println("-LIB <NAME> (*)             : Name of native library.");
+				System.err.println("-FUNC_INDEX <NUM>           : Index of function in native library to be used.");
+				System.err.println("-TRIALS <NUM>               : Number of trials");
+				System.err.println("-G <NUM>                    : Generation.");
+				System.err.println("-LAMBDA <NUM>               : Number of offspring.");
+				System.err.println("-MU <NUM>                   : Number of parents.");
+				System.err.println("-D_FORMAT <@SEE SAMPLES>    : Describe the individual.");
+				System.err.println("-ADD_INFO_LENGTH <NUM>      : Length of additional information for each individual.");
+                
 				System.exit(-1);
 			}
 		}
@@ -431,20 +486,21 @@ public class StandardES {
 		private String outputPath;			//path for outputs
 		private String nativeLib;			//native library used for evaluation on "hdfs://"
 		private int funcIndex;				//index of function in native library to be used
-		private int trialsNum;				//number of trials
 				
 		// ES Parameters
-		private int dimensions[];			//dimensions of individual	
+		private int trialsNum;				//number of trials
 		private int maxGeneration;			//max generation
-		
 		private int lambda;				//number of offspring 
 		private int mu;					//number of parents
 
+		// Individual Parameters
+		private int[] dimensions;			//dimensions of individual
 		private double[] ucv;				//upper_bounds of chromosomes
 		private double[] lcv;				//lower_bounds of chromosomes
 		private double[] usv;				//upper_bounds of strategies
 		private double[] lsv;				//lower_bounds of strategies
 		private double[] initialsv;			//initial value for strategies
+		private int addInfoLength;			//length of additional information per individual
 		
 		// Getters
 		public String getOutputPath() {
@@ -459,9 +515,6 @@ public class StandardES {
 		public int getTrialsNum() {
 			return trialsNum;
 		}
-		public int[] getDimensions() {
-			return dimensions;
-		}
 		public int getMaxGeneration() {
 			return maxGeneration;
 		}
@@ -470,6 +523,9 @@ public class StandardES {
 		}
 		public int getMu() {
 			return mu;
+		}
+		public int[] getDimensions() {
+			return dimensions;
 		}
 		public double[] getUcv() {
 			return ucv;
@@ -486,6 +542,9 @@ public class StandardES {
 		public double[] getInitialsv() {
 			return initialsv;
 		}
+		public int getAddInfoLength() {
+			return addInfoLength;
+		}
 		
 		// Setters
 		public void setOutputPath(final String value) {
@@ -500,9 +559,6 @@ public class StandardES {
 		public void setTrialsNum(final int value) {
 			trialsNum = value;
 		}
-		public void setDimensions(final int[] value) {
-			dimensions = value;
-		}
 		public void setMaxGeneration(final int value) {
 			maxGeneration = value;
 		}
@@ -511,6 +567,9 @@ public class StandardES {
 		}
 		public void setMu(final int value) {
 			mu = value;
+		}
+		public void setDimensions(final int[] value) {
+			dimensions = value;
 		}
 		public void setUcv(final double[] value) {
 			ucv = value;
@@ -526,6 +585,9 @@ public class StandardES {
 		}
 		public void setInitialsv(final double[] value) {
 			initialsv = value;
+		}
+		public void setAddInfoLength(final int value) {
+			addInfoLength = value;
 		}
 	}
 }
